@@ -2,11 +2,13 @@ from dotenv import load_dotenv
 import os
 import re
 import math
+import argparse
 
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyClientCredentials
 
 import yt_dlp
+from ytmusicapi import YTMusic
 
 class Song:
     def __init__(self, name, artist, duration):
@@ -16,6 +18,15 @@ class Song:
     
     def searchQuery(self):
         return "track: " + self.name + ", artist: " + self.artist
+    
+    def searchInfo(self):
+        try:
+            ytmusic = YTMusic()
+            info = ytmusic.search(query=self.searchQuery(), filter="songs", limit=10)
+        except Exception as err:
+            print("an error occurred: ", err)
+            
+        return info 
 
 def clean_song_title(rawTitle):
     # remove all () and [] groups
@@ -23,57 +34,79 @@ def clean_song_title(rawTitle):
     cleaned = re.sub(r"[\(\[].*?[\)\]]", "", rawTitle)
     return cleaned.strip()
 
-def spotifyLoad():
-    load_dotenv()
+def tokenize(text):
+    # remove non-alphanumeric chars
+    text = re.sub(r'[^\w\s]', '', text.lower())
+    return set(text.split())
 
-    CLIENT_ID = os.getenv("CLIENT_ID")
-    CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-    REDIRECT_URI = "https://google.com"
+def spotifyLoad(spotifyURI):
+    try:
+        load_dotenv()
 
-    scope = "user-read-private playlist-read-private playlist-read-collaborative"
+        CLIENT_ID = os.getenv("CLIENT_ID")
+        CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
-        scope=scope
-    ))
+        auth_manager = SpotifyClientCredentials(
+            client_id=CLIENT_ID,
+            client_secret=CLIENT_SECRET
+        )
+        sp = spotipy.Spotify(auth_manager=auth_manager)
 
-    playlist = sp.playlist(playlist_id="4T7fvz2Mhhr342aoOvcU55")
-    
-    songs = []
+        playlist = sp.playlist_items(playlist_id=spotifyURI)
+        
+        songs = []
 
-    for song in playlist["tracks"]['items']:
-        songs.append(Song(
-            song["track"]["name"],
-            song["track"]["artists"][0]["name"],
-            math.floor(song["track"]["duration_ms"]/(1000))
-        ))
+        while playlist:
+            for song in playlist['items']:
+                songs.append(Song(
+                    song["track"]["name"],
+                    song["track"]["artists"][0]["name"],
+                    math.floor(song["track"]["duration_ms"]/(1000))
+                ))
+            
+            if playlist['next']:
+                playlist = sp.next(playlist)
+            else:
+                break
+            
+    except Exception as err:
+        print("error occurred: ", err)
     
     return songs
 
-def filter(info, song, max_duration_diff=5):
+def matchScore(song_title, video_title):
+    song_tokens = tokenize(song_title)
+    video_tokens = tokenize(video_title)
+
+    if not song_tokens:
+        return 0.0
+
+    matched = song_tokens.intersection(video_tokens)
+    return len(matched) / len(song_tokens)
+
+def filter(song, info, max_duration_diff=8):
     try:
-        if info and 'entries' in info:
-            for entry in info['entries']:
-                print(f"Title: {entry.get('title')}")
-                print(f"Uploader: {entry.get('uploader')}")
-                print(f"URL: {entry.get('webpage_url')}\n")
+        if info:
+            for entry in info:
+                print(f"Title: {entry['title']}")
+                print(f"Artist: {entry['artists'][0]['name']}")
+                print(f"URL: https://music.youtube.com/watch?v={entry['videoId']}\n")
                 
-                title = entry.get('title').lower()
+                title = entry['title'].lower()
                 
-                if song.name.lower() not in title:
+                if score := matchScore(song_title=song.name, video_title=title) < 0.6:
+                    print("score: ", score)
                     continue
                 
                 excluded_keywords = ["remix", "live", "cover", "karaoke", "slowed", "reverb", "vocals", "flute", "instrumental", "8D"]
                 if any(word in title for word in excluded_keywords):
                     continue
                 
-                duration = entry.get('duration')
+                duration = entry['duration_seconds']
                 if duration is None or abs(duration - song.duration) > max_duration_diff:
                     continue
                 
-                return True, entry.get('webpage_url')
+                return True, entry['videoId']
             else:
                 return False, ""              
         else:
@@ -86,7 +119,6 @@ def filter(info, song, max_duration_diff=5):
         
 def ytDownload(songs):  
     for song in songs:
-        search_term = song.searchQuery()
         
         ydl_opts = {
             'format': 'bestaudio/best',                     
@@ -101,27 +133,37 @@ def ytDownload(songs):
                 'preferredcodec': 'mp3',
             }]
         }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                info = ydl.extract_info(f"ytsearch{10}:{search_term}", download=False)
-                print("-"*40)
-                print("search term: ", search_term)
+                print("-"*50)
+                print("search term: ", song.searchQuery())
                 
-                flag, video_url = filter(info, song)
-                print(video_url)
+                flag, videoId = filter(song, info=song.searchInfo())
                 
                 if flag:
-                    ydl.download([video_url])
+                    print(f"song link: https://music.youtube.com/watch?v={videoId}")
+                    
+                    ydl.download([f"https://music.youtube.com/watch?v={videoId}"])
                     print(f"downloaded song: {song.name}")
                 else:
                     print(f"couldn't find a match for the song - {song.name}")
                 
             except Exception as err:
                 print("an error occurred ", err)     
-        
+          
 def main():
-    songs = spotifyLoad()
-    ytDownload(songs)
-
+    parser = argparse.ArgumentParser(description="program to download spotify playlists")
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands")
+    
+    download_parser = subparsers.add_parser("download", help="Download a Spotify playlist from YouTube")
+    download_parser.add_argument("download", help="Spotify playlist URL or ID")
+    
+    args = parser.parse_args()
+    
+    if args.command == "download":
+        songs = spotifyLoad(args.download)
+        ytDownload(songs)
+        
 if __name__ == "__main__":
     main()
