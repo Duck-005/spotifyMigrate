@@ -18,14 +18,14 @@ ydl_opts = {
             }]
         }
 
-def downloadPlaylist(songs: list[Song]):  
+def downloadPlaylist(songs: list[Song], outputDir):  
     for song in songs:
         
-        ydl_opts['outtmpl'] = f"./downloads/{re.sub(' +', '-', song.name)}.%(ext)s"
+        ydl_opts['outtmpl'] = f"./{outputDir}/{re.sub(' +', '-', song.name)}.%(ext)s"
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print("-"*50)
+                print("-"*60)
                 print("search term: ", song.searchQuery())
                 
                 flag, videoId = filter(song, info=song.searchInfo())
