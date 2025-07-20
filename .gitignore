@@ -1,7 +1,7 @@
-.cache
-.env
+*.cache
+*.env
 env/
-.vscode
+*.vscode
 downloads/*
-.mp3
+*.mp3
 __pycache__/
