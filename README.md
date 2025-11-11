@@ -37,8 +37,15 @@ It fetches metadata from Spotify, finds matching tracks on YouTube Music via the
 
 1. Get Spotify API Credentials
 Create a Spotify Developer app at developer.spotify.com and note your client ID and client secret.
+Ensure ffmpeg is already installed.
 
-2. Authenticate
+Add to .env file.
+```python
+CLIENT_SECRET="REDACTED"
+CLIENT_ID="REDACTED"
+```
+
+3. Authenticate
 Running the tool with your credentials in .env will prompt you to cache the token (copied from the browser).
 
 4. Run the downloader
@@ -49,6 +56,9 @@ python main.py
 > **Important:** This project requires Spotify API credentials even for public playlists.
 
 > **Important**: This project requires ffmpeg. Install it from [here](https://www.ffmpeg.org/download.html)
+
+> **Important**: Ensure yt-dlp is updated since youtube updates its structure frequently which might make older yt-dlp versions to fail.
+
 ## Configuration
 
 You can modify ydl_opts for yt-dlp to control output format, codec, and post-processing:
