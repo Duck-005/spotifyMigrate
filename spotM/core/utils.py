@@ -1,15 +1,24 @@
 from ytmusicapi import YTMusic
 
 import re
+from dataclasses import dataclass, field
 
+@dataclass
 class Song:
-    def __init__(self, name, artist, duration):
-        self.name = clean_song_title(name)
-        self.duration = duration
-        self.artist = artist
+    name: str
+    artist: str
+    duration: float
+    cleaned_name: str = field(init=False)
+    cover_url: str
+    album: str
+    source_url: str
+    youtube_url: str
+    
+    def __post_init__(self):
+        self.cleaned_name = clean_song_title(self.name)
     
     def searchQuery(self):
-        return "track: " + self.name + ", artist: " + self.artist
+        return self.name + ", artist: " + self.artist
     
     def searchInfo(self):
         try:
@@ -49,21 +58,16 @@ def filter(song, info, max_duration_diff=8):
             for entry in info:
                 title = entry['title'].lower()
                 
-                if score := matchScore(song_title=song.name, video_title=title) < 0.6:
-                    print("score: ", score)
+                if matchScore(song_title=song.name, video_title=title) < 0.6:
                     continue
                 
-                excluded_keywords = ["remix", "live", "cover", "karaoke", "slowed", "reverb", "vocals", "flute", "instrumental", "8D"]
+                excluded_keywords = ["remix", "live", "cover", "karaoke", "slowed", "reverb", "vocals", "8D"]
                 if any(word in title for word in excluded_keywords):
                     continue
                 
                 duration = entry['duration_seconds']
                 if duration is None or abs(duration - song.duration) > max_duration_diff:
                     continue
-                
-                print(f"Title: {entry['title']}")
-                print(f"Artist: {entry['artists'][0]['name']}")
-                print(f"URL: https://music.youtube.com/watch?v={entry['videoId']}\n")
                 
                 return True, entry['videoId']
             else:

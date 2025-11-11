@@ -8,7 +8,7 @@ def main():
     
     download_parser = subparsers.add_parser("download", help="Download a Spotify playlist from YouTube")
     download_parser.add_argument("download", help="Spotify playlist URL or ID")
-    download_parser.add_argument("-o", "--output", default="downloads/", help="Download directory")
+    download_parser.add_argument("-o", "--output", default="downloads", help="Download directory")
     
     args = parser.parse_args()
     

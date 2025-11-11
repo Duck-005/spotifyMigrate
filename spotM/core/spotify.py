@@ -25,24 +25,35 @@ def loadPlaylist(spotifyURI):
     
     try:
         sp = loadCredentials()
-
         playlist = sp.playlist_items(playlist_id=spotifyURI)
 
         while playlist:
-            for song in playlist['items']:
+            for item in playlist['items']:
+                track = item.get('track')
+                if not track:
+                    continue
+
+                album = track.get('album', {})
+                artists = track.get('artists', [])
+
                 songs.append(Song(
-                    name=song["track"]["name"],
-                    artist=song["track"]["artists"][0]["name"],
-                    duration=math.floor(song["track"]["duration_ms"]/(1000))
+                    name=track.get('name', 'Unknown Title'),
+                    artist=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
+                    duration=math.floor(track.get('duration_ms', 0) / 1000),
+                    cover_url=album['images'][0]['url'] if album.get('images') else "",
+                    album=album.get('name', 'Unknown Album'),
+                    source_url=track.get('external_urls', {}).get('spotify', ''),
+                    youtube_url=f"https://music.youtube.com/watch?v={track.get('id', '')}",
                 ))
-            
-            if playlist['next']:
+
+            # handle pagination
+            if playlist.get('next'):
                 playlist = sp.next(playlist)
             else:
                 break
-            
+
     except Exception as err:
-        print("error occurred: ", err)
+        print("error occurred:", err)
     
     return songs
 
@@ -52,9 +63,13 @@ def loadSong(spotifyURI):
         
         track = sp.track(track_id=spotifyURI)
         song = Song(
-            name=track['name'],
-            artist=track['artists'][0]['name'],
-            duration=track["duration_ms"]/(1000)
+            name=track.get('name', 'Unknown Title'),
+            artist=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
+            duration=math.floor(track.get('duration_ms', 0) / 1000),
+            cover_url=album['images'][0]['url'] if album.get('images') else "",
+            album=album.get('name', 'Unknown Album'),
+            source_url=track.get('external_urls', {}).get('spotify', ''),
+            youtube_url=f"https://music.youtube.com/watch?v={track.get('id', '')}",
         )
         
         return song
