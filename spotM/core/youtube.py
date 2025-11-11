@@ -5,15 +5,19 @@ from spotM.core.utils import Song, filter
 import concurrent.futures
 import threading
 import re
+from colorama import Fore, Style, init
+
+init(autoreset=True) # colorama initialization
 
 ydl_opts = {
     'format': 'bestaudio/best',                     
     'outtmpl': None, # Output file naming template
     'quiet': True, 
+    "continuedl": False, # yt-dlp avoid continuing downloads from .part files
     'no_warnings': True,
     'noplaylist': True, # Download only one video if playlist
     'ignoreerrors': True,
-    'restrictfilenames': True, # avoid invalid characters
+    'restrictfilenames': True, # Avoid invalid characters
     'postprocessors': [{ # Extract audio using ffmpeg
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
@@ -35,8 +39,8 @@ def download_song(song, outputDir, ydl_opts):
         filename = re.sub(r'[-\s]+', '-', song.name.strip())
         ydl_opts['outtmpl'] = f"./{outputDir}/{filename}.%(ext)s"
 
-        log_lines.append("-" * 60)
-        log_lines.append(f"Search term: {song.searchQuery()}")
+        log_lines.append("")
+        log_lines.append(f"{Fore.GREEN}Search term: {Style.RESET_ALL}{song.searchQuery()}")
 
         flag, videoId = filter(song, info=song.searchInfo())
         if not flag:
@@ -47,15 +51,15 @@ def download_song(song, outputDir, ydl_opts):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([yt_url])
 
-        log_lines.append(f"Youtube URL: {yt_url}")
-        log_lines.append(f"Downloaded song: {song.name}")
+        log_lines.append(f"{Fore.CYAN}Youtube URL: {Style.RESET_ALL}{yt_url}")
+        log_lines.append(f"{Fore.CYAN}Downloaded song: {Style.RESET_ALL}{song.name}")
 
     except Exception as err:
-        log_lines.append(f"Error downloading {song.name}: {err}")
+        log_lines.append(f"{Fore.RED}Error downloading {song.name}: {Style.RESET_ALL}{err}")
 
     safe_print("\n".join(log_lines))
 
-def downloadPlaylist(songs: list, outputDir, max_workers=3):
+def downloadPlaylist(songs: list, outputDir, max_workers=4):
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
@@ -67,6 +71,5 @@ def downloadPlaylist(songs: list, outputDir, max_workers=3):
             try:
                 future.result()
             except Exception as e:
-                safe_print(f"Worker error: {e}")
+                safe_print(f"{Fore.RED}Worker error: {Style.RESET_ALL}{e}")
                 
-    print("-" * 60)

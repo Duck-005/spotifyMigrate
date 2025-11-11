@@ -62,6 +62,9 @@ def loadSong(spotifyURI):
         sp = loadCredentials()
         
         track = sp.track(track_id=spotifyURI)
+        album = track.get('album', {})
+        artists = track.get('artists', [])
+        
         song = Song(
             name=track.get('name', 'Unknown Title'),
             artist=", ".join([a.get('name', 'Unknown Artist') for a in artists]),

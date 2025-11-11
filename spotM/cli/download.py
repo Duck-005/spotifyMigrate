@@ -9,7 +9,7 @@ from spotM.core import youtube as yt
 def download(url, outputDir):
     if 'track' in url:
         song = sp.loadSong(url)
-        yt.downloadSong(song)
+        yt.download_song(song, ".", yt.ydl_opts)
         
     elif 'playlist' in url:
         songs = sp.loadPlaylist(url)
