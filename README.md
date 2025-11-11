@@ -47,6 +47,7 @@ python main.py
 ```
 
 > **Important:** This project requires Spotify API credentials even for public playlists.
+
 > **Important**: This project requires ffmpeg. Install it from [here](https://www.ffmpeg.org/download.html)
 ## Configuration
 
