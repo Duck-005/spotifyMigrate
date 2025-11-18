@@ -38,11 +38,11 @@ def loadPlaylist(spotifyURI):
 
                 songs.append(Song(
                     name=track.get('name', 'Unknown Title'),
-                    artist=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
+                    artists=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
                     duration=math.floor(track.get('duration_ms', 0) / 1000),
                     cover_url=album['images'][0]['url'] if album.get('images') else "",
                     album=album.get('name', 'Unknown Album'),
-                    source_url=track.get('external_urls', {}).get('spotify', ''),
+                    spotifyURI=track.get('id', ''),
                     youtube_url=f"https://music.youtube.com/watch?v={track.get('id', '')}",
                 ))
 
@@ -67,11 +67,11 @@ def loadSong(spotifyURI):
         
         song = Song(
             name=track.get('name', 'Unknown Title'),
-            artist=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
+            artists=", ".join([a.get('name', 'Unknown Artist') for a in artists]),
             duration=math.floor(track.get('duration_ms', 0) / 1000),
             cover_url=album['images'][0]['url'] if album.get('images') else "",
             album=album.get('name', 'Unknown Album'),
-            source_url=track.get('external_urls', {}).get('spotify', ''),
+            spotifyURI=track.get('id', ''),
             youtube_url=f"https://music.youtube.com/watch?v={track.get('id', '')}",
         )
         
